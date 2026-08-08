@@ -1,0 +1,203 @@
+
+import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+
+import userRoute from './routes/users.js';
+import courseRoute from './routes/course.js';
+import contentRoute from './routes/content.js';
+import blogRoute from './routes/blog.js';
+import authRoute from './routes/auth.js';
+import notificationRoutes from "./routes/notification.js";
+import badgeRoute from "./routes/badge.js";
+import leaderboardRoute from "./routes/leaderboard.js";
+import geminiRoutes from "./routes/gaminai.js";
+import shareRoutes from "./routes/social.js";
+import { startAgenda } from './utils/agenda.js';
+import enrollmentRoutes from "./routes/enrollment.js";
+import chatRoutes from "./routes/chat.js";
+import ChatChannel from "./models/ChatChannel.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./utils/swagger.js";
+import dns from "node:dns";
+
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
+dotenv.config({ path: './config.env' });
+
+const app = express();
+const portNo = process.env.PORT || 8000;
+
+/* ---------------------- 1. CREATE HTTP SERVER ---------------------- */
+const server = createServer(app);
+
+/* ---------------------- 2. INITIALIZE SOCKET.IO ---------------------- */
+const io = new Server(server, {
+  cors: {
+    origin: true,
+    credentials: true,
+  },
+});
+
+// Store connected users for real-time notifications
+const onlineChatUsers = new Set();
+
+io.on("connection", (socket) => {
+  console.log("🟢 User connected:", socket.id);
+
+  // User must send their userId after login so we join them to a room
+  socket.on("join-user", async (userId) => {
+    if (!userId) return;
+    socket.join(userId);
+    socket.data.userId = userId;
+    console.log(`👤 User ${userId} joined room`);
+
+    // Auto-join every chat channel/DM this user belongs to so they get
+    // real-time updates (new messages, unread counts) even before opening
+    // the Chat screen.
+    try {
+      const channels = await ChatChannel.find({ "members.user": userId }).select("_id");
+      channels.forEach((c) => socket.join(`channel:${c._id}`));
+    } catch (err) {
+      console.error("Failed to auto-join chat channels:", err.message);
+    }
+
+    onlineChatUsers.add(userId);
+    io.emit("chat:presence-online", Array.from(onlineChatUsers));
+  });
+
+  // Explicit join/leave for a single channel (used when opening a chat thread)
+  socket.on("chat:join-channel", (channelId) => {
+    if (channelId) socket.join(`channel:${channelId}`);
+  });
+
+  socket.on("chat:leave-channel", (channelId) => {
+    if (channelId) socket.leave(`channel:${channelId}`);
+  });
+
+  // Typing indicators (ephemeral - not persisted)
+  socket.on("chat:typing", ({ channelId, userId, username }) => {
+    if (!channelId) return;
+    socket.to(`channel:${channelId}`).emit("chat:typing", { channelId, userId, username });
+  });
+
+  socket.on("chat:stop-typing", ({ channelId, userId }) => {
+    if (!channelId) return;
+    socket.to(`channel:${channelId}`).emit("chat:stop-typing", { channelId, userId });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("🔴 User disconnected:", socket.id);
+
+    const userId = socket.data.userId;
+    if (!userId) return;
+
+    const room = io.sockets.adapter.rooms.get(userId);
+    // Only mark offline once no other tabs/devices for this user remain
+    if (!room || room.size === 0) {
+      onlineChatUsers.delete(userId);
+      io.emit("chat:presence-offline", userId);
+    }
+  });
+});
+
+/* ---------------------- 3. MIDDLEWARE ---------------------- */
+ app.use(express.json());
+const allowedOrigins = [
+  'http://localhost:5173','http://localhost:3000','https://janeen-admin.netlify.app','https://janeenapp.netlify.app'];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS not allowed from this origin: ' + origin));
+      }
+    },
+    credentials: true, // allow cookies and auth headers
+  })
+);
+//app.use(cors({ origin: true, credentials: true }));
+app.use(cookieParser());
+
+
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+/* ---------------------- 4. ROUTES ---------------------- */
+app.get('/', (req, res) => {
+  res.send('API working successfully');
+});
+
+// app.use('/db-check', (req, res) => {
+//   const isConnected = mongoose.connection.readyState === 1;
+//   res.status(isConnected ? 200 : 500).json({
+//     connected: isConnected,
+//     message: isConnected
+//       ? '✅ MongoDB is connected!'
+//       : '❌ MongoDB is NOT connected.',
+//   });
+// });
+// Fix /db-check route
+app.get('/db-check', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.status(isConnected ? 200 : 500).json({
+    connected: isConnected,
+    message: isConnected
+      ? '✅ MongoDB is connected!'
+      : '❌ MongoDB is NOT connected.',
+  });
+});
+/* ---------------------- SWAGGER DOCS ---------------------- */
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api/v1/auth', authRoute);
+app.use('/api/v1/users', userRoute);
+app.use('/api/v1/course', courseRoute);
+app.use('/api/v1/content', contentRoute);
+app.use('/api/v1/blogs', blogRoute);
+app.use('/api/v1/badges', badgeRoute);
+app.use('/api/v1/leaderboards', leaderboardRoute);
+app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/gemini", geminiRoutes);
+app.use("/api/v1/share", shareRoutes);
+
+
+
+app.use("/api/enrollment", enrollmentRoutes);
+app.use("/api/v1/chat", chatRoutes);
+
+/* ---------------------- 5. MONGO + SERVER + AGENDA START ---------------------- */
+const startServer = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }); 
+    console.log('✅ MongoDB Connected Successfully');
+
+    
+   await startAgenda(io); 
+    console.log("⏳ Agenda Scheduler Started");
+
+    // Start server WITH Socket.IO
+    server.listen(portNo, () => {
+      console.log(`🚀 Server running on port ${portNo}`);
+    });
+
+  } catch (error) {
+    console.error('❌ MongoDB Connection Failed:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
