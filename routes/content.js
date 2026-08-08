@@ -91,7 +91,7 @@ import {
   createStage, getAllStages, getStageById, updateStage, deleteStage, publishStage,
   saveBlocks, addBlock, updateBlock, deleteBlock,
   getCategoryTOC, getUserStageContent,
-} from "../controllers/contentCategoryContoller.js";
+} from "../Controllers/contentCategoryContoller.js";
 
 const router = express.Router();
 
