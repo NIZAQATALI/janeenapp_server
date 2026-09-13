@@ -132,7 +132,20 @@ const stageSchema = new mongoose.Schema({
 const categorySchema = new mongoose.Schema({
   slug: {
     type: String,
-    enum: ["pre-planning", "pre-pregnancy", "pregnancy", "infant", "toddler", "postpartum"],
+    enum: [
+      "pre-pregnancy",
+      "non-pregnant",
+      "pregnancy",
+      "post-pregnancy",
+      "planning-to-be-father",
+      "father",
+      "newborn-infant",
+      "toddler",
+      "preschool",
+      "school-age",
+      "teen",
+      "young-adult",
+    ],
     required: true,
     unique: true,
   },

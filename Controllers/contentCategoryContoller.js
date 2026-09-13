@@ -856,3 +856,21 @@ export const getUserStageContent = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// Get a single published stage by its _id (user-facing, no admin required)
+export const getPublicStageById = async (req, res) => {
+  try {
+    const { categorySlug, stageId } = req.params;
+    const category = await Category.findOne({ slug: categorySlug, isActive: true });
+    if (!category) return res.status(404).json({ success: false, message: "Category not found" });
+
+    const stage = category.stages.id(stageId);
+    if (!stage || !stage.isPublished)
+      return res.status(404).json({ success: false, message: "Stage not found" });
+
+    stage.blocks.sort((a, b) => a.order - b.order);
+    res.json({ success: true, data: stage });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

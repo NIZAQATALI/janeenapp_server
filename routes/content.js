@@ -5,7 +5,7 @@ import {
   createCategory, getAllCategories, getCategoryById, updateCategory, deleteCategory,
   createStage, getAllStages, getStageById, updateStage, deleteStage, publishStage,
   saveBlocks, addBlock, updateBlock, deleteBlock,
-  getCategoryTOC, getUserStageContent,
+  getCategoryTOC, getUserStageContent, getPublicStageById,
 } from "../Controllers/contentCategoryContoller.js";
 
 const router = express.Router();
@@ -35,5 +35,6 @@ router.delete(`${blockBase}/:blockId`, verifyJWT, verifyAdmin, deleteBlock);
 // ─── USER-FACING ROUTES ───────────────────────────────────────────────────────
 router.get("/read/:categorySlug", verifyJWT, getCategoryTOC);                        // table of contents
 router.get("/read/:categorySlug/stage", verifyJWT, getUserStageContent);             // ?month=3 or ?week=12
+router.get("/read/:categorySlug/stages/:stageId", verifyJWT, getPublicStageById);   // single stage with blocks
 
 export default router;

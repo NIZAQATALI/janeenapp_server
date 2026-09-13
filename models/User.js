@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ENUMS.TRIMESTER,
       required: function () {
-        return this.pregnancyStage === "Pregnancy";
+        return this.pregnancyStage === "pregnancy";
       },
     },
     pregnancyStartDate: { type: Date },

@@ -61,23 +61,27 @@ export const getLeaderboard = async (req, res) => {
 };
 
 export const getGamificationDashboard = async (req, res) => {
-  const userId = req.user.id;
-  const user = await User.findById(userId).select("username email points");
-  const badges = await Userbadge.find({ userId })
-    .populate("badgeId");
-  const weekly = await Leaderboard.findOne({ period: "weekly" })
-    .sort({ createdAt: -1 });
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).select("username email points");
 
-  const rank = weekly?.users.find(
-    u => u.userId.toString() === userId
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
-  );
+    const badges = await Userbadge.find({ userId }).populate("badgeId");
+    const weekly = await Leaderboard.findOne({ period: "weekly" }).sort({ createdAt: -1 });
+    const rank = weekly?.users.find(u => u.userId.toString() === userId);
 
-  res.json({
-      username: user.username,   
-      email: user.email, 
-    points: user.points,
-    rank: rank?.rank || null,
-    badges
-  });
+    res.json({
+      username: user.username,
+      email: user.email,
+      points: user.points,
+      rank: rank?.rank || null,
+      badges
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
 };

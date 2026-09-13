@@ -20,6 +20,7 @@ import shareRoutes from "./routes/social.js";
 import { startAgenda } from './utils/agenda.js';
 import enrollmentRoutes from "./routes/enrollment.js";
 import chatRoutes from "./routes/chat.js";
+import gameRoutes from "./routes/game.js";
 import ChatChannel from "./models/ChatChannel.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./utils/swagger.js";
@@ -175,6 +176,7 @@ app.use("/api/v1/share", shareRoutes);
 
 app.use("/api/enrollment", enrollmentRoutes);
 app.use("/api/v1/chat", chatRoutes);
+app.use("/api/v1/games", gameRoutes);
 
 /* ---------------------- 5. MONGO + SERVER + AGENDA START ---------------------- */
 const startServer = async () => {
