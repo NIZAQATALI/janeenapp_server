@@ -40,15 +40,17 @@ export const getLeaderboard = async (req, res) => {
       return res.json({ period, users: [] });
     }
 
-    // 🔥 flatten populated user data
-    const users = leaderboard.users.map(user => ({
-      _id: user._id,
-      userId: user.userId._id,
-      name: user.userId.username,
-      email: user.userId.email,
-      points: user.points,
-      rank: user.rank
-    }));
+    // Populated references can be null when a user was deleted.
+    const users = leaderboard.users
+      .filter(user => user.userId)
+      .map(user => ({
+        _id: user._id,
+        userId: user.userId._id,
+        name: user.userId.username,
+        email: user.userId.email,
+        points: user.points,
+        rank: user.rank
+      }));
 
     res.status(200).json({
       period,

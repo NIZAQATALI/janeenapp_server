@@ -27,14 +27,14 @@ router.patch("/categories/:categoryId/stages/:stageId/publish", verifyJWT, verif
 
 // ─── BLOCK ROUTES ─────────────────────────────────────────────────────────────
 const blockBase = "/categories/:categoryId/stages/:stageId/blocks";
-router.put(blockBase, verifyJWT, verifyAdmin, saveBlocks);               // full save from editor
+router.put(blockBase, verifyJWT, verifyAdmin, saveBlocks);               
 router.post(blockBase, verifyJWT, verifyAdmin, addBlock);
 router.put(`${blockBase}/:blockId`, verifyJWT, verifyAdmin, updateBlock);
 router.delete(`${blockBase}/:blockId`, verifyJWT, verifyAdmin, deleteBlock);
 
 // ─── USER-FACING ROUTES ───────────────────────────────────────────────────────
-router.get("/read/:categorySlug", verifyJWT, getCategoryTOC);                        // table of contents
-router.get("/read/:categorySlug/stage", verifyJWT, getUserStageContent);             // ?month=3 or ?week=12
-router.get("/read/:categorySlug/stages/:stageId", verifyJWT, getPublicStageById);   // single stage with blocks
+router.get("/read/:categorySlug", verifyJWT, getCategoryTOC);                        
+router.get("/read/:categorySlug/stage", verifyJWT, getUserStageContent);             
+router.get("/read/:categorySlug/stages/:stageId", verifyJWT, getPublicStageById);   
 
 export default router;
